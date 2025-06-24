@@ -1,6 +1,46 @@
-# SweetStoreAPI
+# 🍰 SweetStoreAPI
 
 A .NET 9 Web API for managing a sweet store, including products, customers, orders, and shopping cart functionality. The application uses MongoDB as the database with MongoDB Driver for data persistence.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- .NET 9 SDK
+- Docker and Docker Compose
+
+### Setup and Run
+
+1. **Run the setup script:**
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+2. **Start the application:**
+   ```bash
+   dotnet run
+   ```
+
+### Alternative Manual Setup
+
+1. **Start MongoDB:**
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Build and run:**
+   ```bash
+   dotnet build
+   dotnet run
+   ```
+
+## 🔗 Access Points
+
+- **API**: https://localhost:5001 or http://localhost:5000
+- **Swagger Documentation**: https://localhost:5001/swagger (in development mode)
+- **Mongo Express (Database UI)**: http://localhost:8081
+  - Username: `admin`
+  - Password: `password`
 
 ## Features
 
@@ -23,6 +63,7 @@ SweetStoreAPI/
 ├── Properties/        # Launch settings
 ├── Program.cs         # Application entry point
 ├── docker-compose.yml # MongoDB setup with Docker
+├── setup.sh          # Quick setup script
 └── SweetStoreAPI.http # HTTP request examples
 ```
 
@@ -34,54 +75,19 @@ SweetStoreAPI/
 - **ASP.NET Core**: Web API framework
 - **Docker**: For MongoDB containerization
 
-## Getting Started
+## 📊 Database Information
 
-### Prerequisites
+### Database Credentials
+- **Admin User**: admin / password (for Mongo Express)
+- **App User**: sweetstore_user / sweetstore_password
 
-- .NET 9 SDK
-- Docker and Docker Compose (for MongoDB)
-- Or MongoDB installed locally
-
-### Setting up MongoDB
-
-#### Option 1: Using Docker (Recommended)
-1. Start MongoDB using Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
-   This will start:
-   - MongoDB on port 27017
-   - Mongo Express (web UI) on port 8081
-
-2. Access Mongo Express at http://localhost:8081
-   - Username: admin
-   - Password: password
-
-#### Option 2: Local MongoDB Installation
-1. Install MongoDB locally
-2. Ensure MongoDB is running on port 27017
-3. The application will automatically create the database and collections
-
-### Running the Application
-
-1. Clone the repository
-2. Navigate to the project directory
-3. Start MongoDB (using Docker Compose or local installation)
-4. Run the application:
-   ```bash
-   dotnet run
-   ```
-
-The API will be available at:
-- HTTPS: `https://localhost:5001`
-- HTTP: `http://localhost:5000`
-- Swagger UI: `https://localhost:5001/swagger` (in development mode)
-
-## Database Configuration
+### Environment Configuration
+- **Development**: Uses `SweetStoreDB_Dev` database
+- **Production**: Uses `SweetStoreDB` database
 
 ### Connection Strings
-- **Development**: `mongodb://localhost:27017` (SweetStoreDB_Dev)
-- **Production**: `mongodb://localhost:27017` (SweetStoreDB)
+- **Development**: `mongodb://sweetstore_user:sweetstore_password@localhost:27017/SweetStoreDB_Dev?authSource=admin`
+- **Production**: `mongodb://sweetstore_user:sweetstore_password@localhost:27017/SweetStoreDB?authSource=admin`
 
 ### Collections
 - **Products**: Store product information
@@ -96,7 +102,7 @@ The application automatically creates indexes for:
 - Order ID, customer ID, and order date
 - Shopping cart customer ID
 
-## API Documentation
+## 📋 API Documentation
 
 The API includes Swagger/OpenAPI documentation available at `/swagger` when running in development mode.
 
@@ -137,22 +143,6 @@ The API includes Swagger/OpenAPI documentation available at `/swagger` when runn
 - **MappingService**: Object mapping between models and DTOs
 - **MongoDbContext**: MongoDB database context and collections
 
-## Configuration
-
-### appsettings.json
-```json
-{
-  "MongoDbSettings": {
-    "ConnectionString": "mongodb://localhost:27017",
-    "DatabaseName": "SweetStoreDB",
-    "ProductsCollectionName": "Products",
-    "CustomersCollectionName": "Customers",
-    "OrdersCollectionName": "Orders",
-    "ShoppingCartsCollectionName": "ShoppingCarts"
-  }
-}
-```
-
 ## Development
 
 ### Data Seeding
@@ -163,7 +153,12 @@ The application automatically seeds initial data on startup:
 ### MongoDB Management
 - Use Mongo Express web interface at http://localhost:8081
 - Or connect directly using MongoDB Compass or any MongoDB client
-- Connection string: `mongodb://localhost:27017`
+- Connection string: `mongodb://admin:password@localhost:27017`
+
+### Stopping Services
+```bash
+docker-compose down
+```
 
 ## Docker Support
 
@@ -179,3 +174,31 @@ docker-compose down
 # View logs
 docker-compose logs mongodb
 ```
+
+## Configuration
+
+### appsettings.json
+```json
+{
+  "MongoDbSettings": {
+    "ConnectionString": "mongodb://sweetstore_user:sweetstore_password@localhost:27017/SweetStoreDB?authSource=admin",
+    "DatabaseName": "SweetStoreDB",
+    "ProductsCollectionName": "Products",
+    "CustomersCollectionName": "Customers",
+    "OrdersCollectionName": "Orders",
+    "ShoppingCartsCollectionName": "ShoppingCarts"
+  }
+}
+```
+
+## Troubleshooting
+
+### MongoDB Connection Issues
+- Verify MongoDB is running: `docker-compose ps`
+- Check logs: `docker-compose logs mongodb`
+- Restart services: `docker-compose restart`
+
+### Application Issues
+- Check if MongoDB is accessible on port 27017
+- Verify connection string includes proper authentication
+- Check application logs for detailed error messages

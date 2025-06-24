@@ -1,4 +1,23 @@
-// MongoDB initialization script
+// Switch to admin database to authenticate
+db = db.getSiblingDB('admin');
+
+// Create application user for SweetStoreDB
+db.createUser({
+  user: 'sweetstore_user',
+  pwd: 'sweetstore_password',
+  roles: [
+    {
+      role: 'readWrite',
+      db: 'SweetStoreDB'
+    },
+    {
+      role: 'readWrite',
+      db: 'SweetStoreDB_Dev'
+    }
+  ]
+});
+
+// Switch to application database
 db = db.getSiblingDB('SweetStoreDB');
 
 // Create collections with indexes
