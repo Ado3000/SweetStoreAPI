@@ -1,0 +1,6 @@
+@SweetStoreAPI_HostAddress = http://localhost:5215
+
+GET {{SweetStoreAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
