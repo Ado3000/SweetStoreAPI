@@ -9,7 +9,7 @@ public static class MappingService
     {
         return new ProductDto
         {
-            Id = product.Id,
+            Id = product.ProductId,
             Name = product.Name,
             Description = product.Description,
             Price = product.Price,
@@ -24,7 +24,7 @@ public static class MappingService
     {
         return new CustomerDto
         {
-            Id = customer.Id,
+            Id = customer.CustomerId,
             Name = customer.Name,
             Email = customer.Email,
             Phone = customer.Phone,
@@ -76,7 +76,7 @@ public static class MappingService
     {
         return new OrderDto
         {
-            Id = order.Id,
+            Id = order.OrderId,
             CustomerId = order.CustomerId,
             CustomerName = order.Customer.Name,
             OrderDate = order.OrderDate,

@@ -1,12 +1,19 @@
 using SweetStoreAPI.Models;
 using SweetStoreAPI.DTOs;
 using SweetStoreAPI.Services;
+using SweetStoreAPI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<DataService>();
+
+// Configure MongoDB
+builder.Services.Configure<MongoDbSettings>(
+    builder.Configuration.GetSection("MongoDbSettings"));
+
+builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddScoped<MongoDataService>();
 
 // Add CORS policy for React frontend
 builder.Services.AddCors(options =>
@@ -31,33 +38,38 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReact");
 app.UseHttpsRedirection();
 
-var dataService = app.Services.GetRequiredService<DataService>();
+// Seed data on startup
+using (var scope = app.Services.CreateScope())
+{
+    var dataService = scope.ServiceProvider.GetRequiredService<MongoDataService>();
+    await dataService.SeedDataAsync();
+}
 
 // Products API
-app.MapGet("/api/products", () =>
+app.MapGet("/api/products", async (MongoDataService dataService) =>
 {
-    var products = dataService.GetAllProducts();
+    var products = await dataService.GetAllProductsAsync();
     return Results.Ok(products.Select(MappingService.ToDto));
 })
 .WithName("GetAllProducts")
 .WithTags("Products");
 
-app.MapGet("/api/products/category/{category}", (string category) =>
+app.MapGet("/api/products/category/{category}", async (string category, MongoDataService dataService) =>
 {
     if (!Enum.TryParse<ProductCategory>(category, true, out var categoryEnum))
     {
         return Results.BadRequest("Invalid category");
     }
     
-    var products = dataService.GetProductsByCategory(categoryEnum);
+    var products = await dataService.GetProductsByCategoryAsync(categoryEnum);
     return Results.Ok(products.Select(MappingService.ToDto));
 })
 .WithName("GetProductsByCategory")
 .WithTags("Products");
 
-app.MapGet("/api/products/{id}", (int id) =>
+app.MapGet("/api/products/{id}", async (int id, MongoDataService dataService) =>
 {
-    var product = dataService.GetProduct(id);
+    var product = await dataService.GetProductAsync(id);
     if (product == null)
         return Results.NotFound();
     
@@ -67,17 +79,17 @@ app.MapGet("/api/products/{id}", (int id) =>
 .WithTags("Products");
 
 // Customers API
-app.MapGet("/api/customers", () =>
+app.MapGet("/api/customers", async (MongoDataService dataService) =>
 {
-    var customers = dataService.GetAllCustomers();
+    var customers = await dataService.GetAllCustomersAsync();
     return Results.Ok(customers.Select(MappingService.ToDto));
 })
 .WithName("GetAllCustomers")
 .WithTags("Customers");
 
-app.MapGet("/api/customers/{id}", (int id) =>
+app.MapGet("/api/customers/{id}", async (int id, MongoDataService dataService) =>
 {
-    var customer = dataService.GetCustomer(id);
+    var customer = await dataService.GetCustomerAsync(id);
     if (customer == null)
         return Results.NotFound();
     
@@ -86,13 +98,13 @@ app.MapGet("/api/customers/{id}", (int id) =>
 .WithName("GetCustomer")
 .WithTags("Customers");
 
-app.MapPost("/api/customers", (CreateCustomerDto customerDto) =>
+app.MapPost("/api/customers", async (CreateCustomerDto customerDto, MongoDataService dataService) =>
 {
     try
     {
         var customer = MappingService.FromDto(customerDto);
-        var createdCustomer = dataService.CreateCustomer(customer);
-        return Results.Created($"/api/customers/{createdCustomer.Id}", MappingService.ToDto(createdCustomer));
+        var createdCustomer = await dataService.CreateCustomerAsync(customer);
+        return Results.Created($"/api/customers/{createdCustomer.CustomerId}", MappingService.ToDto(createdCustomer));
     }
     catch (Exception ex)
     {
@@ -103,26 +115,26 @@ app.MapPost("/api/customers", (CreateCustomerDto customerDto) =>
 .WithTags("Customers");
 
 // Shopping Cart API
-app.MapGet("/api/cart/{customerId}", (int customerId) =>
+app.MapGet("/api/cart/{customerId}", async (int customerId, MongoDataService dataService) =>
 {
-    var customer = dataService.GetCustomer(customerId);
+    var customer = await dataService.GetCustomerAsync(customerId);
     if (customer == null)
         return Results.NotFound("Customer not found");
     
-    var cart = dataService.GetCart(customerId);
+    var cart = await dataService.GetCartAsync(customerId);
     return Results.Ok(MappingService.ToDto(cart, customer));
 })
 .WithName("GetCart")
 .WithTags("Cart");
 
-app.MapPost("/api/cart/add", (AddToCartDto addToCartDto) =>
+app.MapPost("/api/cart/add", async (AddToCartDto addToCartDto, MongoDataService dataService) =>
 {
     try
     {
-        dataService.AddToCart(addToCartDto.CustomerId, addToCartDto.ProductId, addToCartDto.Quantity);
+        await dataService.AddToCartAsync(addToCartDto.CustomerId, addToCartDto.ProductId, addToCartDto.Quantity);
         
-        var customer = dataService.GetCustomer(addToCartDto.CustomerId);
-        var cart = dataService.GetCart(addToCartDto.CustomerId);
+        var customer = await dataService.GetCustomerAsync(addToCartDto.CustomerId);
+        var cart = await dataService.GetCartAsync(addToCartDto.CustomerId);
         return Results.Ok(MappingService.ToDto(cart, customer!));
     }
     catch (Exception ex)
@@ -133,48 +145,48 @@ app.MapPost("/api/cart/add", (AddToCartDto addToCartDto) =>
 .WithName("AddToCart")
 .WithTags("Cart");
 
-app.MapDelete("/api/cart/{customerId}/items/{productId}", (int customerId, int productId) =>
+app.MapDelete("/api/cart/{customerId}/items/{productId}", async (int customerId, int productId, MongoDataService dataService) =>
 {
-    dataService.RemoveFromCart(customerId, productId);
+    await dataService.RemoveFromCartAsync(customerId, productId);
     
-    var customer = dataService.GetCustomer(customerId);
-    var cart = dataService.GetCart(customerId);
+    var customer = await dataService.GetCustomerAsync(customerId);
+    var cart = await dataService.GetCartAsync(customerId);
     return Results.Ok(MappingService.ToDto(cart, customer!));
 })
 .WithName("RemoveFromCart")
 .WithTags("Cart");
 
-app.MapPut("/api/cart/{customerId}/items/{productId}/quantity/{quantity}", (int customerId, int productId, int quantity) =>
+app.MapPut("/api/cart/{customerId}/items/{productId}/quantity/{quantity}", async (int customerId, int productId, int quantity, MongoDataService dataService) =>
 {
-    dataService.UpdateCartItemQuantity(customerId, productId, quantity);
+    await dataService.UpdateCartItemQuantityAsync(customerId, productId, quantity);
     
-    var customer = dataService.GetCustomer(customerId);
-    var cart = dataService.GetCart(customerId);
+    var customer = await dataService.GetCustomerAsync(customerId);
+    var cart = await dataService.GetCartAsync(customerId);
     return Results.Ok(MappingService.ToDto(cart, customer!));
 })
 .WithName("UpdateCartItemQuantity")
 .WithTags("Cart");
 
 // Orders API
-app.MapGet("/api/orders", () =>
+app.MapGet("/api/orders", async (MongoDataService dataService) =>
 {
-    var orders = dataService.GetAllOrders();
+    var orders = await dataService.GetAllOrdersAsync();
     return Results.Ok(orders.Select(MappingService.ToDto));
 })
 .WithName("GetAllOrders")
 .WithTags("Orders");
 
-app.MapGet("/api/orders/customer/{customerId}", (int customerId) =>
+app.MapGet("/api/orders/customer/{customerId}", async (int customerId, MongoDataService dataService) =>
 {
-    var orders = dataService.GetCustomerOrders(customerId);
+    var orders = await dataService.GetCustomerOrdersAsync(customerId);
     return Results.Ok(orders.Select(MappingService.ToDto));
 })
 .WithName("GetCustomerOrders")
 .WithTags("Orders");
 
-app.MapGet("/api/orders/{id}", (int id) =>
+app.MapGet("/api/orders/{id}", async (int id, MongoDataService dataService) =>
 {
-    var order = dataService.GetOrder(id);
+    var order = await dataService.GetOrderAsync(id);
     if (order == null)
         return Results.NotFound();
     
@@ -183,12 +195,12 @@ app.MapGet("/api/orders/{id}", (int id) =>
 .WithName("GetOrder")
 .WithTags("Orders");
 
-app.MapPost("/api/orders", (CreateOrderDto orderDto) =>
+app.MapPost("/api/orders", async (CreateOrderDto orderDto, MongoDataService dataService) =>
 {
     try
     {
-        var order = dataService.CreateOrder(orderDto.CustomerId);
-        return Results.Created($"/api/orders/{order.Id}", MappingService.ToDto(order));
+        var order = await dataService.CreateOrderAsync(orderDto.CustomerId);
+        return Results.Created($"/api/orders/{order.OrderId}", MappingService.ToDto(order));
     }
     catch (Exception ex)
     {
