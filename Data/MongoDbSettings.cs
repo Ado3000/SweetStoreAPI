@@ -1,11 +1,11 @@
 namespace SweetStoreAPI.Data;
 
-public class MongoDbSettings
+public record MongoDbSettings
 {
-    public string ConnectionString { get; set; } = string.Empty;
-    public string DatabaseName { get; set; } = string.Empty;
-    public string ProductsCollectionName { get; set; } = "Products";
-    public string CustomersCollectionName { get; set; } = "Customers";
-    public string OrdersCollectionName { get; set; } = "Orders";
-    public string ShoppingCartsCollectionName { get; set; } = "ShoppingCarts";
+    public string ConnectionString { get; init; } = string.Empty;
+    public string DatabaseName { get; init; } = string.Empty;
+    public string ProductsCollectionName { get; init; } = "Products";
+    public string CustomersCollectionName { get; init; } = "Customers";
+    public string OrdersCollectionName { get; init; } = "Orders";
+    public string ShoppingCartsCollectionName { get; init; } = "ShoppingCarts";
 }
